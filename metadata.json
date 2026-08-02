@@ -1,0 +1,6 @@
+{
+  "name": "Tankování",
+  "description": "Aplikace pro evidenci tankování paliva a výpočet průměrné spotřeby v l/100 km.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
