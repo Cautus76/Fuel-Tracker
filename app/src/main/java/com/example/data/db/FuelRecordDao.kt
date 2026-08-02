@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface FuelRecordDao {
 
-    @Query("SELECT * FROM fuel_records ORDER BY odometer DESC, dateMillis DESC")
+    @Query("SELECT * FROM fuel_records ORDER BY odometer DESC, date DESC")
     fun getAllRecords(): Flow<List<FuelRecord>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

@@ -63,18 +63,19 @@ fun AddEditFuelDialog(
     editingRecord: FuelRecord?,
     lastKnownOdometer: Double,
     onDismiss: () -> Unit,
-    onSave: (dateMillis: Long, odometer: Double, litres: Double, totalPrice: Double, fuelType: String, stationName: String) -> Unit,
+    onSave: (date: String, odometer: Double, litres: Double, totalPrice: Double, fuelType: String, stationName: String) -> Unit,
     lang: AppLanguage = AppLanguage.CZ,
     modifier: Modifier = Modifier
 ) {
-    var dateMillis by remember {
-        mutableStateOf(editingRecord?.dateMillis ?: System.currentTimeMillis())
+    var dateIsoStr by remember {
+        mutableStateOf(editingRecord?.date ?: DateUtils.todayIsoDate())
     }
+
+    var isSaving by remember { mutableStateOf(false) }
 
     var odometerText by remember {
         mutableStateOf(
-            editingRecord?.odometer?.let { DateUtils.formatNumber(it, 0, lang).replace(" ", "").replace(",", ".") }
-                ?: if (lastKnownOdometer > 0) (lastKnownOdometer + 450).toInt().toString() else ""
+            editingRecord?.odometer?.let { DateUtils.formatNumber(it, 0, lang).replace(" ", "").replace(",", ".") } ?: ""
         )
     }
 
@@ -121,14 +122,16 @@ fun AddEditFuelDialog(
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = dateMillis
+            initialSelectedDateMillis = DateUtils.isoToEpochMillis(dateIsoStr)
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        datePickerState.selectedDateMillis?.let { dateMillis = it }
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            dateIsoStr = DateUtils.epochMillisToIso(millis)
+                        }
                         showDatePicker = false
                     }
                 ) {
@@ -210,7 +213,7 @@ fun AddEditFuelDialog(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    text = DateUtils.formatDate(dateMillis, lang = lang),
+                                    text = DateUtils.formatDate(dateIsoStr, lang = lang),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -233,7 +236,6 @@ fun AddEditFuelDialog(
                         odometerError = null
                     },
                     label = { Text(AppStrings.odometer(lang)) },
-                    placeholder = { Text("120500") },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Speed,
@@ -260,7 +262,6 @@ fun AddEditFuelDialog(
                         litresError = null
                     },
                     label = { Text(AppStrings.litres(lang)) },
-                    placeholder = { Text("42.5") },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.LocalGasStation,
@@ -287,7 +288,6 @@ fun AddEditFuelDialog(
                         priceError = null
                     },
                     label = { Text("${AppStrings.totalPrice(lang)} (${lang.currencySymbol})") },
-                    placeholder = { Text("1615") },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Payments,
@@ -353,7 +353,6 @@ fun AddEditFuelDialog(
                         value = stationName,
                         onValueChange = { stationName = it },
                         label = { Text(AppStrings.stationName(lang)) },
-                        placeholder = { Text("ORLEN, Shell...") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Store,
@@ -393,6 +392,8 @@ fun AddEditFuelDialog(
         confirmButton = {
             Button(
                 onClick = {
+                    if (isSaving) return@Button
+
                     val odo = odometerText.replace(",", ".").toDoubleOrNull()
                     val lit = litresText.replace(",", ".").toDoubleOrNull()
                     val pri = priceText.replace(",", ".").toDoubleOrNull()
@@ -412,9 +413,11 @@ fun AddEditFuelDialog(
                     }
 
                     if (isValid && odo != null && lit != null && pri != null) {
-                        onSave(dateMillis, odo, lit, pri, selectedFuelType, stationName.trim())
+                        isSaving = true
+                        onSave(dateIsoStr, odo, lit, pri, selectedFuelType, stationName.trim())
                     }
                 },
+                enabled = !isSaving,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.testTag("save_button")
             ) {

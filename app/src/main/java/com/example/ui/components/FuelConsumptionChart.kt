@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.example.ui.model.AppLanguage
 import com.example.ui.model.FuelRecordUiItem
 import com.example.util.AppStrings
+import com.example.util.ChartRangeCalculator
 import com.example.util.DateUtils
 
 @Composable
@@ -49,18 +51,17 @@ fun FuelConsumptionChart(
         .filter { it.segmentConsumption != null && it.segmentConsumption > 0 }
         .sortedBy { it.record.odometer }
 
-    if (validPoints.size < 2) return
+    if (validPoints.isEmpty()) return
+
+    val values = validPoints.map { it.segmentConsumption!! }
+    val bounds = ChartRangeCalculator.calculateBounds(values) ?: return
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val secondaryColor = MaterialTheme.colorScheme.secondary
     val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
-    val gridColor = onSurfaceVariant.copy(alpha = 0.15f)
 
-    val minVal = (validPoints.minOf { it.segmentConsumption!! } * 0.9).coerceAtLeast(3.0)
-    val maxVal = (validPoints.maxOf { it.segmentConsumption!! } * 1.1).coerceAtMost(25.0)
-
-    val avgConsumption = validPoints.map { it.segmentConsumption!! }.average()
+    val avgConsumption = values.average()
 
     Card(
         modifier = modifier
@@ -91,7 +92,7 @@ fun FuelConsumptionChart(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.ShowChart,
+                            imageVector = Icons.AutoMirrored.Filled.ShowChart,
                             contentDescription = null,
                             tint = primaryColor,
                             modifier = Modifier.size(18.dp)
@@ -133,10 +134,10 @@ fun FuelConsumptionChart(
                 val drawWidth = width - (paddingX * 2)
                 val drawHeight = height - (paddingY * 2)
 
-                // Grid lines (min, avg, max)
-                val range = (maxVal - minVal).toFloat()
+                val range = bounds.chartRange.toFloat()
+                val chartMin = bounds.chartMin.toFloat()
 
-                val yAvg = paddingY + drawHeight - (((avgConsumption - minVal) / range) * drawHeight).toFloat()
+                val yAvg = paddingY + drawHeight - (((avgConsumption - chartMin) / range) * drawHeight).toFloat()
                 drawLine(
                     color = secondaryColor.copy(alpha = 0.4f),
                     start = Offset(paddingX, yAvg),
@@ -147,54 +148,60 @@ fun FuelConsumptionChart(
 
                 // Compute point coordinates
                 val points = validPoints.mapIndexed { idx, item ->
-                    val cons = item.segmentConsumption!!.toFloat()
-                    val x = paddingX + (idx.toFloat() / (validPoints.size - 1)) * drawWidth
-                    val y = paddingY + drawHeight - (((cons - minVal) / range) * drawHeight).toFloat()
+                    val cons = (item.segmentConsumption ?: 0.0).toFloat()
+                    val x = if (validPoints.size == 1) {
+                        paddingX + drawWidth / 2f
+                    } else {
+                        paddingX + (idx.toFloat() / (validPoints.size - 1)) * drawWidth
+                    }
+                    val y = paddingY + drawHeight - (((cons - chartMin) / range) * drawHeight).toFloat()
                     Offset(x, y)
                 }
 
-                // Fill gradient under curve
-                val fillPath = Path().apply {
-                    moveTo(points.first().x, height - paddingY)
-                    lineTo(points.first().x, points.first().y)
-                    for (i in 1 until points.size) {
-                        val p1 = points[i - 1]
-                        val p2 = points[i]
-                        val controlX1 = p1.x + (p2.x - p1.x) / 2
-                        val controlX2 = p1.x + (p2.x - p1.x) / 2
-                        cubicTo(controlX1, p1.y, controlX2, p2.y, p2.x, p2.y)
+                if (points.size >= 2) {
+                    // Fill gradient under curve
+                    val fillPath = Path().apply {
+                        moveTo(points.first().x, height - paddingY)
+                        lineTo(points.first().x, points.first().y)
+                        for (i in 1 until points.size) {
+                            val p1 = points[i - 1]
+                            val p2 = points[i]
+                            val controlX1 = p1.x + (p2.x - p1.x) / 2
+                            val controlX2 = p1.x + (p2.x - p1.x) / 2
+                            cubicTo(controlX1, p1.y, controlX2, p2.y, p2.x, p2.y)
+                        }
+                        lineTo(points.last().x, height - paddingY)
+                        close()
                     }
-                    lineTo(points.last().x, height - paddingY)
-                    close()
-                }
 
-                drawPath(
-                    path = fillPath,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            primaryColor.copy(alpha = 0.35f),
-                            primaryColor.copy(alpha = 0.02f)
+                    drawPath(
+                        path = fillPath,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                primaryColor.copy(alpha = 0.35f),
+                                primaryColor.copy(alpha = 0.02f)
+                            )
                         )
                     )
-                )
 
-                // Line path
-                val linePath = Path().apply {
-                    moveTo(points.first().x, points.first().y)
-                    for (i in 1 until points.size) {
-                        val p1 = points[i - 1]
-                        val p2 = points[i]
-                        val controlX1 = p1.x + (p2.x - p1.x) / 2
-                        val controlX2 = p1.x + (p2.x - p1.x) / 2
-                        cubicTo(controlX1, p1.y, controlX2, p2.y, p2.x, p2.y)
+                    // Line path
+                    val linePath = Path().apply {
+                        moveTo(points.first().x, points.first().y)
+                        for (i in 1 until points.size) {
+                            val p1 = points[i - 1]
+                            val p2 = points[i]
+                            val controlX1 = p1.x + (p2.x - p1.x) / 2
+                            val controlX2 = p1.x + (p2.x - p1.x) / 2
+                            cubicTo(controlX1, p1.y, controlX2, p2.y, p2.x, p2.y)
+                        }
                     }
-                }
 
-                drawPath(
-                    path = linePath,
-                    color = primaryColor,
-                    style = Stroke(width = 6f)
-                )
+                    drawPath(
+                        path = linePath,
+                        color = primaryColor,
+                        style = Stroke(width = 6f)
+                    )
+                }
 
                 // Point dots
                 for (pt in points) {
@@ -217,7 +224,7 @@ fun FuelConsumptionChart(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = DateUtils.formatDateShort(validPoints.first().record.dateMillis, lang = lang),
+                    text = DateUtils.formatDateShort(validPoints.first().record.date, lang = lang),
                     style = MaterialTheme.typography.labelSmall,
                     color = onSurfaceVariant
                 )
@@ -228,7 +235,7 @@ fun FuelConsumptionChart(
                     color = secondaryColor
                 )
                 Text(
-                    text = DateUtils.formatDateShort(validPoints.last().record.dateMillis, lang = lang),
+                    text = DateUtils.formatDateShort(validPoints.last().record.date, lang = lang),
                     style = MaterialTheme.typography.labelSmall,
                     color = onSurfaceVariant
                 )

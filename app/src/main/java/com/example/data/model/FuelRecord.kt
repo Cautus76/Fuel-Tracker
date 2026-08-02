@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 data class FuelRecord(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
-    val dateMillis: Long,
+    val date: String = "",
     val odometer: Double,
     val litres: Double,
     val totalPrice: Double,

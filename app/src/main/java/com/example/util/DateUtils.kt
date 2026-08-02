@@ -2,8 +2,10 @@ package com.example.util
 
 import com.example.ui.model.AppLanguage
 import java.text.NumberFormat
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object DateUtils {
@@ -12,26 +14,54 @@ object DateUtils {
         return Locale(lang.localeLanguage, lang.localeCountry)
     }
 
-    fun formatDate(timeMillis: Long, lang: AppLanguage = AppLanguage.CZ): String {
+    fun todayIsoDate(): String {
+        return LocalDate.now().toString()
+    }
+
+    fun formatDate(dateStr: String, lang: AppLanguage = AppLanguage.CZ): String {
+        if (dateStr.isBlank()) return ""
+        val localDate = try {
+            LocalDate.parse(dateStr)
+        } catch (e: Exception) {
+            return dateStr
+        }
         val pattern = when (lang) {
             AppLanguage.CZ -> "d. M. yyyy"
             AppLanguage.ENG -> "MMM d, yyyy"
             AppLanguage.ESP -> "d 'de' MMM, yyyy"
             AppLanguage.DE -> "dd.MM.yyyy"
         }
-        val formatter = SimpleDateFormat(pattern, getLocale(lang))
-        return formatter.format(Date(timeMillis))
+        val formatter = DateTimeFormatter.ofPattern(pattern, getLocale(lang))
+        return localDate.format(formatter)
     }
 
-    fun formatDateShort(timeMillis: Long, lang: AppLanguage = AppLanguage.CZ): String {
+    fun formatDateShort(dateStr: String, lang: AppLanguage = AppLanguage.CZ): String {
+        if (dateStr.isBlank()) return ""
+        val localDate = try {
+            LocalDate.parse(dateStr)
+        } catch (e: Exception) {
+            return dateStr
+        }
         val pattern = when (lang) {
             AppLanguage.CZ -> "d. MMM"
             AppLanguage.ENG -> "MMM d"
             AppLanguage.ESP -> "d MMM"
             AppLanguage.DE -> "dd. MMM"
         }
-        val formatter = SimpleDateFormat(pattern, getLocale(lang))
-        return formatter.format(Date(timeMillis))
+        val formatter = DateTimeFormatter.ofPattern(pattern, getLocale(lang))
+        return localDate.format(formatter)
+    }
+
+    fun isoToEpochMillis(dateStr: String): Long {
+        return try {
+            LocalDate.parse(dateStr).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        } catch (e: Exception) {
+            LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        }
+    }
+
+    fun epochMillisToIso(millis: Long): String {
+        return Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate().toString()
     }
 
     fun formatNumber(value: Double, decimals: Int = 2, lang: AppLanguage = AppLanguage.CZ): String {

@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.Calendar
+import java.time.LocalDate
 
 import com.example.ui.model.AppLanguage
 import com.example.util.AppStrings
@@ -135,40 +135,48 @@ class FuelViewModel(application: Application) : AndroidViewModel(application) {
         _editingRecord.value = null
     }
 
+    private var isSaving = false
+
     fun saveRecord(
-        dateMillis: Long,
+        date: String,
         odometer: Double,
         litres: Double,
         totalPrice: Double,
         fuelType: String,
         stationName: String
     ) {
+        if (isSaving) return
+        isSaving = true
         viewModelScope.launch {
-            val recordToSave = _editingRecord.value?.copy(
-                dateMillis = dateMillis,
-                odometer = odometer,
-                litres = litres,
-                totalPrice = totalPrice,
-                fuelType = fuelType,
-                stationName = stationName
-            ) ?: FuelRecord(
-                dateMillis = dateMillis,
-                odometer = odometer,
-                litres = litres,
-                totalPrice = totalPrice,
-                fuelType = fuelType,
-                stationName = stationName
-            )
+            try {
+                val recordToSave = _editingRecord.value?.copy(
+                    date = date,
+                    odometer = odometer,
+                    litres = litres,
+                    totalPrice = totalPrice,
+                    fuelType = fuelType,
+                    stationName = stationName
+                ) ?: FuelRecord(
+                    date = date,
+                    odometer = odometer,
+                    litres = litres,
+                    totalPrice = totalPrice,
+                    fuelType = fuelType,
+                    stationName = stationName
+                )
 
-            val lang = _currentLanguage.value
-            if (_editingRecord.value != null) {
-                repository.update(recordToSave)
-                _snackbarMessage.value = AppStrings.recordUpdated(lang)
-            } else {
-                repository.insert(recordToSave)
-                _snackbarMessage.value = AppStrings.recordSaved(lang)
+                val lang = _currentLanguage.value
+                if (_editingRecord.value != null) {
+                    repository.update(recordToSave)
+                    _snackbarMessage.value = AppStrings.recordUpdated(lang)
+                } else {
+                    repository.insert(recordToSave)
+                    _snackbarMessage.value = AppStrings.recordSaved(lang)
+                }
+                closeDialog()
+            } finally {
+                isSaving = false
             }
-            closeDialog()
         }
     }
 
@@ -185,13 +193,13 @@ class FuelViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadSampleData() {
         viewModelScope.launch {
-            val cal = Calendar.getInstance()
+            val today = LocalDate.now()
             
             // Sample dataset with realistic intervals and litres
             val baseOdometer = 120000.0
             val samples = listOf(
                 FuelRecord(
-                    dateMillis = cal.apply { add(Calendar.DAY_OF_MONTH, -30) }.timeInMillis,
+                    date = today.minusDays(30).toString(),
                     odometer = baseOdometer,
                     litres = 42.5,
                     totalPrice = 1615.0, // 38.00 Kč/l
@@ -199,7 +207,7 @@ class FuelViewModel(application: Application) : AndroidViewModel(application) {
                     stationName = "ORLEN Benzina"
                 ),
                 FuelRecord(
-                    dateMillis = cal.apply { add(Calendar.DAY_OF_MONTH, 7) }.timeInMillis,
+                    date = today.minusDays(23).toString(),
                     odometer = baseOdometer + 580.0,
                     litres = 39.4,
                     totalPrice = 1516.9, // 38.50 Kč/l
@@ -207,7 +215,7 @@ class FuelViewModel(application: Application) : AndroidViewModel(application) {
                     stationName = "Shell"
                 ),
                 FuelRecord(
-                    dateMillis = cal.apply { add(Calendar.DAY_OF_MONTH, 8) }.timeInMillis,
+                    date = today.minusDays(15).toString(),
                     odometer = baseOdometer + 1190.0,
                     litres = 41.2,
                     totalPrice = 1565.6, // 38.00 Kč/l
@@ -215,7 +223,7 @@ class FuelViewModel(application: Application) : AndroidViewModel(application) {
                     stationName = "MOL"
                 ),
                 FuelRecord(
-                    dateMillis = cal.apply { add(Calendar.DAY_OF_MONTH, 9) }.timeInMillis,
+                    date = today.minusDays(6).toString(),
                     odometer = baseOdometer + 1820.0,
                     litres = 43.1,
                     totalPrice = 1629.2, // 37.80 Kč/l

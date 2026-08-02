@@ -97,7 +97,7 @@ fun FuelRecordCard(
                     }
 
                     Text(
-                        text = DateUtils.formatDate(record.dateMillis, lang = lang),
+                        text = DateUtils.formatDate(record.date, lang = lang),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface

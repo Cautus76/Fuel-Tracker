@@ -419,8 +419,8 @@ fun MainScreen(
             editingRecord = uiState.editingRecord,
             lastKnownOdometer = uiState.lastKnownOdometer,
             onDismiss = { viewModel.closeDialog() },
-            onSave = { dateMillis, odo, lit, pri, fuelType, station ->
-                viewModel.saveRecord(dateMillis, odo, lit, pri, fuelType, station)
+            onSave = { date, odo, lit, pri, fuelType, station ->
+                viewModel.saveRecord(date, odo, lit, pri, fuelType, station)
             },
             lang = lang
         )
@@ -432,7 +432,7 @@ fun MainScreen(
             onDismissRequest = { recordToDelete = null },
             title = { Text(AppStrings.deleteConfirmTitle(lang)) },
             text = {
-                Text("${AppStrings.deleteConfirmMsg(lang)} (${com.example.util.DateUtils.formatDate(record.dateMillis, lang = lang)} - ${record.litres} l)")
+                Text("${AppStrings.deleteConfirmMsg(lang)} (${com.example.util.DateUtils.formatDate(record.date, lang = lang)} - ${record.litres} l)")
             },
             confirmButton = {
                 Button(

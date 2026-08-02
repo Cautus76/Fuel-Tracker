@@ -37,6 +37,7 @@ object FuelCalculations {
         val uiItems = mutableListOf<FuelRecordUiItem>()
 
         var totalLitresExcludingFirst = 0.0
+        var totalCostExcludingFirst = 0.0
         var totalCost = 0.0
         var totalLitres = 0.0
         val segmentConsumptions = mutableListOf<Double>()
@@ -54,6 +55,7 @@ object FuelCalculations {
 
             if (distance != null && distance > 0) {
                 totalLitresExcludingFirst += current.litres
+                totalCostExcludingFirst += current.totalPrice
                 segmentCons = (current.litres / distance) * 100.0
                 costPerKm = current.totalPrice / distance
                 segmentConsumptions.add(segmentCons)
@@ -82,7 +84,11 @@ object FuelCalculations {
         }
 
         val avgPricePerLitre = if (totalLitres > 0) totalCost / totalLitres else 0.0
-        val avgCostPerKm = if (totalDistance > 0) totalCost / totalDistance else 0.0
+        val avgCostPerKm = if (totalDistance > 0 && totalCostExcludingFirst > 0) {
+            totalCostExcludingFirst / totalDistance
+        } else {
+            0.0
+        }
 
         val stats = FuelStats(
             totalRecords = records.size,
