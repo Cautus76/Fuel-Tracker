@@ -22,7 +22,6 @@ The application is free and open-source software.
 * Calculate average fuel price per litre
 * Calculate average cost per kilometre
 * Display fuel-consumption history in a chart
-* Filter, edit, and delete refuelling records
 * Localized interface
 
 ### Calculation method
@@ -80,7 +79,6 @@ Aplikace je zdarma a má otevřený zdrojový kód.
 * Výpočet průměrné ceny za litr
 * Výpočet průměrných nákladů na kilometr
 * Graf historie spotřeby
-* Filtrování, úprava a mazání záznamů
 * Vícejazyčné uživatelské rozhraní
 
 ### Způsob výpočtu
@@ -138,7 +136,6 @@ Die Anwendung ist kostenlos und quelloffen.
 * Durchschnittspreis pro Liter berechnen
 * Durchschnittliche Kosten pro Kilometer berechnen
 * Verbrauchsverlauf als Diagramm anzeigen
-* Tankvorgänge filtern, bearbeiten und löschen
 * Mehrsprachige Benutzeroberfläche
 
 ### Berechnungsmethode
@@ -196,7 +193,6 @@ La aplicación es gratuita y de código abierto.
 * Calcular el precio medio por litro
 * Calcular el coste medio por kilómetro
 * Mostrar el historial de consumo en un gráfico
-* Filtrar, editar y eliminar registros
 * Interfaz localizada
 
 ### Método de cálculo
