@@ -217,7 +217,7 @@ El primer registro sigue incluyéndose en:
 * Eliminados los valores de ejemplo confusos de los campos de entrada
 * Mejorada la escala dinámica del gráfico de consumo
 * Añadido margen para evitar que los puntos y la curva queden recortados
-* Añadidas y actualizadas pruebas de cálculo
+* Añadas y actualizadas pruebas de cálculo
 
 ### Problemas conocidos
 

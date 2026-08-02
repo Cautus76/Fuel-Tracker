@@ -52,6 +52,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.data.model.FuelRecord
 import com.example.util.DateUtils
+import com.example.util.OdometerValidator
 import java.util.Calendar
 
 import com.example.ui.model.AppLanguage
@@ -61,7 +62,7 @@ import com.example.util.AppStrings
 @Composable
 fun AddEditFuelDialog(
     editingRecord: FuelRecord?,
-    lastKnownOdometer: Double,
+    previousOdometer: Double?,
     onDismiss: () -> Unit,
     onSave: (date: String, odometer: Double, litres: Double, totalPrice: Double, fuelType: String, stationName: String) -> Unit,
     lang: AppLanguage = AppLanguage.CZ,
@@ -233,7 +234,13 @@ fun AddEditFuelDialog(
                     value = odometerText,
                     onValueChange = {
                         odometerText = it
-                        odometerError = null
+                        if (odometerError != null) {
+                            val odo = it.replace(",", ".").toDoubleOrNull()
+                            val v = OdometerValidator.validate(odo, previousOdometer)
+                            odometerError = if (v is OdometerValidator.ValidationResult.Invalid) {
+                                AppStrings.odometerError(v, lang)
+                            } else null
+                        }
                     },
                     label = { Text(AppStrings.odometer(lang)) },
                     leadingIcon = {
@@ -399,17 +406,27 @@ fun AddEditFuelDialog(
                     val pri = priceText.replace(",", ".").toDoubleOrNull()
 
                     var isValid = true
-                    if (odo == null || odo <= 0) {
-                        odometerError = AppStrings.odometer(lang)
+
+                    val odoValidation = OdometerValidator.validate(odo, previousOdometer)
+                    if (odoValidation is OdometerValidator.ValidationResult.Invalid) {
+                        odometerError = AppStrings.odometerError(odoValidation, lang)
                         isValid = false
+                    } else {
+                        odometerError = null
                     }
+
                     if (lit == null || lit <= 0) {
                         litresError = AppStrings.litres(lang)
                         isValid = false
+                    } else {
+                        litresError = null
                     }
+
                     if (pri == null || pri <= 0) {
                         priceError = AppStrings.totalPrice(lang)
                         isValid = false
+                    } else {
+                        priceError = null
                     }
 
                     if (isValid && odo != null && lit != null && pri != null) {

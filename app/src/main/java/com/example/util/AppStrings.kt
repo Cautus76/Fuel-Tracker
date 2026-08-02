@@ -163,15 +163,71 @@ object AppStrings {
     fun deleteConfirmTitle(lang: AppLanguage): String = when (lang) {
         AppLanguage.CZ -> "Smazat záznam?"
         AppLanguage.ENG -> "Delete record?"
-        AppLanguage.ESP -> "¡Eliminar registro?"
+        AppLanguage.ESP -> "¿Eliminar registro?"
         AppLanguage.DE -> "Eintrag löschen?"
     }
 
     fun deleteConfirmMsg(lang: AppLanguage): String = when (lang) {
-        AppLanguage.CZ -> "Opravdu chcete smazat tento záznam o tankování?"
-        AppLanguage.ENG -> "Are you sure you want to delete this refueling record?"
-        AppLanguage.ESP -> "¿Está seguro de eliminar este registro de repostaje?"
-        AppLanguage.DE -> "Möchten Sie diesen Betankungseintrag wirklich löschen?"
+        AppLanguage.CZ -> "Opravdu chcete smazat tento záznam o tankování? Tuto akci nelze vrátit zpět."
+        AppLanguage.ENG -> "Are you sure you want to delete this refueling record? This action cannot be undone."
+        AppLanguage.ESP -> "¿Está seguro de eliminar este registro de repostaje? Esta acción no se puede deshacer."
+        AppLanguage.DE -> "Möchten Sie diesen Betankungseintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+    }
+
+    fun deleteRecordConfirmMsg(dateStr: String, odoStr: String, lang: AppLanguage): String = when (lang) {
+        AppLanguage.CZ -> "Opravdu chcete smazat záznam z $dateStr (tachometr: $odoStr km)? Tuto akci nelze vrátit zpět."
+        AppLanguage.ENG -> "Are you sure you want to delete the record from $dateStr (odometer: $odoStr km)? This action cannot be undone."
+        AppLanguage.ESP -> "¿Está seguro de eliminar el registro del $dateStr (cuentakilómetros: $odoStr km)? Esta acción no se puede deshacer."
+        AppLanguage.DE -> "Möchten Sie den Eintrag vom $dateStr (Kilometerstand: $odoStr km) wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+    }
+
+    fun clearAllStep1Title(lang: AppLanguage): String = when (lang) {
+        AppLanguage.CZ -> "Vymazat všechna data?"
+        AppLanguage.ENG -> "Clear all data?"
+        AppLanguage.ESP -> "¿Borrar todos los datos?"
+        AppLanguage.DE -> "Alle Daten löschen?"
+    }
+
+    fun clearAllStep1Msg(lang: AppLanguage): String = when (lang) {
+        AppLanguage.CZ -> "Chcete vymazat všechna data aplikace? Tento krok odstraní všechny záznamy o tankování, statistiky a historii."
+        AppLanguage.ENG -> "Do you want to clear all application data? This step will remove all refueling records, statistics, and history."
+        AppLanguage.ESP -> "¿Desea borrar todos los datos de la aplicación? Este paso eliminará todos los registros de repostaje, estadísticas e historial."
+        AppLanguage.DE -> "Möchten Sie alle Anwendungsdaten löschen? Dieser Schritt entfernt alle Betankungseinträge, Statistiken und Historie."
+    }
+
+    fun continueButton(lang: AppLanguage): String = when (lang) {
+        AppLanguage.CZ -> "Pokračovat"
+        AppLanguage.ENG -> "Continue"
+        AppLanguage.ESP -> "Continuar"
+        AppLanguage.DE -> "Weiter"
+    }
+
+    fun clearAllStep2Title(lang: AppLanguage): String = when (lang) {
+        AppLanguage.CZ -> "Trvalé odstranění"
+        AppLanguage.ENG -> "Permanent deletion"
+        AppLanguage.ESP -> "Eliminación permanente"
+        AppLanguage.DE -> "Dauerhafte Löschung"
+    }
+
+    fun clearAllStep2Msg(lang: AppLanguage): String = when (lang) {
+        AppLanguage.CZ -> "Chystáte se trvale odstranit všechny záznamy o tankování, statistiky a historii. Tuto akci nelze vrátit zpět a odstraněná data nebude možné obnovit.\n\nPro potvrzení napište DELETE."
+        AppLanguage.ENG -> "You are about to permanently delete all refueling records, statistics, and history. This action cannot be undone and deleted data cannot be recovered.\n\nType DELETE to confirm."
+        AppLanguage.ESP -> "Está a punto de eliminar permanentemente todos los registros de repostaje, estadísticas e historial. Esta acción no se puede deshacer y los datos no se podrán recuperar.\n\nEscribe DELETE para confirmar."
+        AppLanguage.DE -> "Sie sind dabei, alle Betankungseinträge, Statistiken und Historie dauerhaft zu löschen. Diese Aktion kann nicht rückgängig gemacht werden und die Daten können nicht wiederhergestellt werden.\n\nGeben Sie zur Bestätigung DELETE ein."
+    }
+
+    fun permanentlyDeleteButton(lang: AppLanguage): String = when (lang) {
+        AppLanguage.CZ -> "Trvale smazat"
+        AppLanguage.ENG -> "Permanently delete"
+        AppLanguage.ESP -> "Eliminar permanentemente"
+        AppLanguage.DE -> "Dauerhaft löschen"
+    }
+
+    fun typeDeletePlaceholder(lang: AppLanguage): String = when (lang) {
+        AppLanguage.CZ -> "Napište DELETE"
+        AppLanguage.ENG -> "Type DELETE"
+        AppLanguage.ESP -> "Escriba DELETE"
+        AppLanguage.DE -> "Geben Sie DELETE ein"
     }
 
     fun clearAllConfirmTitle(lang: AppLanguage): String = when (lang) {
@@ -291,5 +347,32 @@ object AppStrings {
         AppLanguage.ENG -> "Select language"
         AppLanguage.ESP -> "Seleccionar idioma"
         AppLanguage.DE -> "Sprache auswählen"
+    }
+
+    fun odometerError(result: OdometerValidator.ValidationResult.Invalid, lang: AppLanguage): String = when (result) {
+        is OdometerValidator.ValidationResult.Invalid.EmptyOrInvalidNumber -> when (lang) {
+            AppLanguage.CZ -> "Zadejte platný stav tachometru"
+            AppLanguage.ENG -> "Enter a valid odometer reading"
+            AppLanguage.ESP -> "Introduzca un valor de cuentakilómetros válido"
+            AppLanguage.DE -> "Geben Sie einen gültigen Kilometerstand ein"
+        }
+        is OdometerValidator.ValidationResult.Invalid.NegativeValue -> when (lang) {
+            AppLanguage.CZ -> "Stav tachometru nesmí být záporný"
+            AppLanguage.ENG -> "Odometer reading cannot be negative"
+            AppLanguage.ESP -> "El cuentakilómetros no puede ser negativo"
+            AppLanguage.DE -> "Der Kilometerstand darf nicht negativ sein"
+        }
+        is OdometerValidator.ValidationResult.Invalid.ZeroNotAllowedWithPreviousRecords -> when (lang) {
+            AppLanguage.CZ -> "Hodnota 0 km je povolena pouze pro první záznam vozidla"
+            AppLanguage.ENG -> "0 km is only allowed for the first vehicle record"
+            AppLanguage.ESP -> "0 km solo está permitido para el primer registro del vehículo"
+            AppLanguage.DE -> "0 km ist nur für den ersten Fahrzeugeintrag erlaubt"
+        }
+        is OdometerValidator.ValidationResult.Invalid.MustBeGreaterThanPrevious -> when (lang) {
+            AppLanguage.CZ -> "Stav tachometru musí být vyšší než předchozí (${DateUtils.formatNumber(result.previousOdometer, 0, lang)} km)"
+            AppLanguage.ENG -> "Odometer reading must be higher than previous (${DateUtils.formatNumber(result.previousOdometer, 0, lang)} km)"
+            AppLanguage.ESP -> "El cuentakilómetros debe ser superior al anterior (${DateUtils.formatNumber(result.previousOdometer, 0, lang)} km)"
+            AppLanguage.DE -> "Der Kilometerstand muss höher sein als der vorherige (${DateUtils.formatNumber(result.previousOdometer, 0, lang)} km)"
+        }
     }
 }

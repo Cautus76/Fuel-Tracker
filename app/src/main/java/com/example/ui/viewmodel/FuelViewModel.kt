@@ -19,6 +19,8 @@ import java.time.LocalDate
 
 import com.example.ui.model.AppLanguage
 import com.example.util.AppStrings
+import com.example.util.ClearAllProtectionValidator
+import com.example.util.OdometerValidator
 
 data class FuelUiState(
     val items: List<FuelRecordUiItem> = emptyList(),
@@ -30,6 +32,10 @@ data class FuelUiState(
     val isAddDialogOpen: Boolean = false,
     val editingRecord: FuelRecord? = null,
     val lastKnownOdometer: Double = 0.0,
+    val previousOdometer: Double? = null,
+    val isClearAllStep1Open: Boolean = false,
+    val isClearAllStep2Open: Boolean = false,
+    val clearAllConfirmationText: String = "",
     val snackbarMessage: String? = null,
     val currentLanguage: AppLanguage = AppLanguage.CZ
 )
@@ -44,6 +50,10 @@ class FuelViewModel(application: Application) : AndroidViewModel(application) {
     private val _editingRecord = MutableStateFlow<FuelRecord?>(null)
     private val _snackbarMessage = MutableStateFlow<String?>(null)
     private val _currentLanguage = MutableStateFlow(AppLanguage.CZ)
+
+    private val _isClearAllStep1Open = MutableStateFlow(false)
+    private val _isClearAllStep2Open = MutableStateFlow(false)
+    private val _clearAllConfirmationText = MutableStateFlow("")
 
     init {
         val dao = AppDatabase.getDatabase(application).fuelRecordDao()
@@ -62,6 +72,12 @@ class FuelViewModel(application: Application) : AndroidViewModel(application) {
         val language: AppLanguage = AppLanguage.CZ
     )
 
+    private data class DeleteAllState(
+        val isStep1Open: Boolean = false,
+        val isStep2Open: Boolean = false,
+        val confirmationText: String = ""
+    )
+
     private val filterState = combine(_searchQuery, _fuelTypeFilter) { query, filter ->
         FilterState(query, filter)
     }
@@ -70,11 +86,16 @@ class FuelViewModel(application: Application) : AndroidViewModel(application) {
         DialogState(isAddOpen, editingRecord, snackbarMessage, language)
     }
 
+    private val deleteAllState = combine(_isClearAllStep1Open, _isClearAllStep2Open, _clearAllConfirmationText) { s1, s2, txt ->
+        DeleteAllState(s1, s2, txt)
+    }
+
     val uiState: StateFlow<FuelUiState> = combine(
         repository.allRecords,
         filterState,
-        dialogState
-    ) { rawRecords, filters, dialogs ->
+        dialogState,
+        deleteAllState
+    ) { rawRecords, filters, dialogs, deleteAll ->
 
         val filteredRecords = rawRecords.filter { rec ->
             val matchesQuery = filters.query.isBlank() ||
@@ -88,6 +109,7 @@ class FuelViewModel(application: Application) : AndroidViewModel(application) {
         val (uiItems, stats) = FuelCalculations.processRecords(filteredRecords)
 
         val maxOdometer = rawRecords.maxOfOrNull { it.odometer } ?: 0.0
+        val prevOdometer = OdometerValidator.getPreviousOdometer(rawRecords, dialogs.editingRecord)
 
         FuelUiState(
             items = uiItems,
@@ -99,6 +121,10 @@ class FuelViewModel(application: Application) : AndroidViewModel(application) {
             isAddDialogOpen = dialogs.isAddOpen,
             editingRecord = dialogs.editingRecord,
             lastKnownOdometer = maxOdometer,
+            previousOdometer = prevOdometer,
+            isClearAllStep1Open = deleteAll.isStep1Open,
+            isClearAllStep2Open = deleteAll.isStep2Open,
+            clearAllConfirmationText = deleteAll.confirmationText,
             snackbarMessage = dialogs.snackbarMessage,
             currentLanguage = dialogs.language
         )
@@ -146,6 +172,13 @@ class FuelViewModel(application: Application) : AndroidViewModel(application) {
         stationName: String
     ) {
         if (isSaving) return
+
+        val prevOdometer = OdometerValidator.getPreviousOdometer(uiState.value.rawRecords, _editingRecord.value)
+        val validation = OdometerValidator.validate(odometer, prevOdometer)
+        if (validation is OdometerValidator.ValidationResult.Invalid) {
+            return
+        }
+
         isSaving = true
         viewModelScope.launch {
             try {
@@ -236,6 +269,38 @@ class FuelViewModel(application: Application) : AndroidViewModel(application) {
                 repository.insert(sample)
             }
             _snackbarMessage.value = AppStrings.sampleDataLoaded(_currentLanguage.value)
+        }
+    }
+
+    fun openClearAllStep1() {
+        _isClearAllStep1Open.value = true
+        _isClearAllStep2Open.value = false
+        _clearAllConfirmationText.value = ""
+    }
+
+    fun proceedToClearAllStep2() {
+        _isClearAllStep1Open.value = false
+        _isClearAllStep2Open.value = true
+        _clearAllConfirmationText.value = ""
+    }
+
+    fun updateClearAllConfirmationText(text: String) {
+        _clearAllConfirmationText.value = text
+    }
+
+    fun cancelClearAll() {
+        _isClearAllStep1Open.value = false
+        _isClearAllStep2Open.value = false
+        _clearAllConfirmationText.value = ""
+    }
+
+    fun confirmClearAllData() {
+        if (_isClearAllStep2Open.value && ClearAllProtectionValidator.isConfirmationValid(_clearAllConfirmationText.value)) {
+            viewModelScope.launch {
+                repository.deleteAll()
+                _snackbarMessage.value = AppStrings.allDataCleared(_currentLanguage.value)
+            }
+            cancelClearAll()
         }
     }
 

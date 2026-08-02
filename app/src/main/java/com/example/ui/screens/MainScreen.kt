@@ -76,6 +76,7 @@ import com.example.ui.components.FuelRecordCard
 import com.example.ui.components.StatsOverviewCard
 import com.example.ui.viewmodel.FuelUiState
 import com.example.ui.viewmodel.FuelViewModel
+import com.example.util.ClearAllProtectionValidator
 
 import androidx.compose.material.icons.filled.Language
 import com.example.ui.model.AppLanguage
@@ -241,7 +242,7 @@ fun MainScreen(
                                     },
                                     onClick = {
                                         showMenu = false
-                                        showClearAllConfirm = true
+                                        viewModel.openClearAllStep1()
                                     },
                                     modifier = Modifier.testTag("menu_clear_all")
                                 )
@@ -417,7 +418,7 @@ fun MainScreen(
     if (uiState.isAddDialogOpen) {
         AddEditFuelDialog(
             editingRecord = uiState.editingRecord,
-            lastKnownOdometer = uiState.lastKnownOdometer,
+            previousOdometer = uiState.previousOdometer,
             onDismiss = { viewModel.closeDialog() },
             onSave = { date, odo, lit, pri, fuelType, station ->
                 viewModel.saveRecord(date, odo, lit, pri, fuelType, station)
@@ -428,11 +429,13 @@ fun MainScreen(
 
     // Delete single record confirmation dialog
     recordToDelete?.let { record ->
+        val dateFormatted = com.example.util.DateUtils.formatDate(record.date, lang = lang)
+        val odoFormatted = com.example.util.DateUtils.formatNumber(record.odometer, 0, lang)
         AlertDialog(
             onDismissRequest = { recordToDelete = null },
             title = { Text(AppStrings.deleteConfirmTitle(lang)) },
             text = {
-                Text("${AppStrings.deleteConfirmMsg(lang)} (${com.example.util.DateUtils.formatDate(record.date, lang = lang)} - ${record.litres} l)")
+                Text(AppStrings.deleteRecordConfirmMsg(dateFormatted, odoFormatted, lang))
             },
             confirmButton = {
                 Button(
@@ -442,43 +445,94 @@ fun MainScreen(
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
-                    )
+                    ),
+                    modifier = Modifier.testTag("delete_record_confirm_button")
                 ) {
                     Text(AppStrings.delete(lang))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { recordToDelete = null }) {
+                TextButton(
+                    onClick = { recordToDelete = null },
+                    modifier = Modifier.testTag("delete_record_cancel_button")
+                ) {
                     Text(AppStrings.cancel(lang))
                 }
-            }
+            },
+            modifier = Modifier.testTag("delete_record_dialog")
         )
     }
 
-    // Clear all records confirmation dialog
-    if (showClearAllConfirm) {
+    // Clear all records step 1 confirmation dialog
+    if (uiState.isClearAllStep1Open) {
         AlertDialog(
-            onDismissRequest = { showClearAllConfirm = false },
-            title = { Text(AppStrings.clearAllConfirmTitle(lang)) },
-            text = { Text(AppStrings.clearAllConfirmMsg(lang)) },
+            onDismissRequest = { viewModel.cancelClearAll() },
+            title = { Text(AppStrings.clearAllStep1Title(lang)) },
+            text = { Text(AppStrings.clearAllStep1Msg(lang)) },
             confirmButton = {
                 Button(
-                    onClick = {
-                        viewModel.clearAllData()
-                        showClearAllConfirm = false
-                    },
+                    onClick = { viewModel.proceedToClearAllStep2() },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
-                    )
+                    ),
+                    modifier = Modifier.testTag("clear_all_step1_continue")
                 ) {
-                    Text(AppStrings.clearAllData(lang))
+                    Text(AppStrings.continueButton(lang))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showClearAllConfirm = false }) {
+                TextButton(
+                    onClick = { viewModel.cancelClearAll() },
+                    modifier = Modifier.testTag("clear_all_step1_cancel")
+                ) {
                     Text(AppStrings.cancel(lang))
                 }
-            }
+            },
+            modifier = Modifier.testTag("clear_all_step1_dialog")
+        )
+    }
+
+    // Clear all records step 2 permanent deletion dialog
+    if (uiState.isClearAllStep2Open) {
+        val isConfirmValid = ClearAllProtectionValidator.isConfirmationValid(uiState.clearAllConfirmationText)
+        AlertDialog(
+            onDismissRequest = { viewModel.cancelClearAll() },
+            title = { Text(AppStrings.clearAllStep2Title(lang)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(AppStrings.clearAllStep2Msg(lang))
+                    OutlinedTextField(
+                        value = uiState.clearAllConfirmationText,
+                        onValueChange = { viewModel.updateClearAllConfirmationText(it) },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("clear_all_confirmation_input")
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.confirmClearAllData() },
+                    enabled = isConfirmValid,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
+                    ),
+                    modifier = Modifier.testTag("clear_all_step2_confirm")
+                ) {
+                    Text(AppStrings.permanentlyDeleteButton(lang))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { viewModel.cancelClearAll() },
+                    modifier = Modifier.testTag("clear_all_step2_cancel")
+                ) {
+                    Text(AppStrings.cancel(lang))
+                }
+            },
+            modifier = Modifier.testTag("clear_all_step2_dialog")
         )
     }
 }
