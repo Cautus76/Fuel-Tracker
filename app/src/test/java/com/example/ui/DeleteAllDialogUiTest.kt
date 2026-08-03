@@ -31,9 +31,7 @@ class DeleteAllDialogUiTest {
     fun `confirmation input field is completely empty when permanent deletion dialog opens`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val viewModel = FuelViewModel(context as android.app.Application)
-
-        viewModel.openClearAllStep1()
-        viewModel.proceedToClearAllStep2()
+        viewModel.saveCarProfile("Test Car", "1ABC234", listOf("Benzín"))
 
         composeTestRule.setContent {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -42,6 +40,13 @@ class DeleteAllDialogUiTest {
                 uiState = uiState
             )
         }
+
+        viewModel.openClearAllStep1()
+        composeTestRule.waitForIdle()
+
+        // Click delete in step 1 dialog to proceed to step 2 dialog
+        composeTestRule.onNodeWithTag("clear_all_step1_continue").performClick()
+        composeTestRule.waitForIdle()
 
         // Verify permanent deletion dialog is displayed
         composeTestRule.onNodeWithTag("clear_all_step2_dialog")

@@ -12,6 +12,10 @@ class FuelRepository(private val dao: FuelRecordDao) {
         return dao.insertRecord(record)
     }
 
+    suspend fun insertAll(records: List<FuelRecord>) {
+        dao.insertAll(records)
+    }
+
     suspend fun update(record: FuelRecord) {
         dao.updateRecord(record)
     }

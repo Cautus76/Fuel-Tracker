@@ -2,6 +2,15 @@ package com.example.ui.model
 
 import com.example.data.model.FuelRecord
 
+enum class FuelSortOption {
+    DATE_DESC,
+    DATE_ASC,
+    PRICE_ASC,
+    PRICE_DESC,
+    QUANTITY_ASC,
+    QUANTITY_DESC
+}
+
 data class FuelRecordUiItem(
     val record: FuelRecord,
     val distanceSincePrevious: Double?, // km
@@ -25,15 +34,18 @@ object FuelCalculations {
 
     /**
      * Computes list of UI items and overall stats from raw records.
-     * Expects input list to be sorted by odometer DESCENDING (newest first).
+     * Sorts UI items according to [sortOption].
      */
-    fun processRecords(records: List<FuelRecord>): Pair<List<FuelRecordUiItem>, FuelStats> {
+    fun processRecords(
+        records: List<FuelRecord>,
+        sortOption: FuelSortOption = FuelSortOption.DATE_DESC
+    ): Pair<List<FuelRecordUiItem>, FuelStats> {
         if (records.isEmpty()) {
             return Pair(emptyList(), FuelStats())
         }
 
-        // Ensure records are sorted descending by odometer
-        val sortedDesc = records.sortedByDescending { it.odometer }
+        // Ensure records are sorted chronologically (newest first) for metric calculation
+        val sortedDesc = records.sortedWith(compareByDescending<FuelRecord> { it.date }.thenByDescending { it.odometer })
         val uiItems = mutableListOf<FuelRecordUiItem>()
 
         var totalLitresExcludingFirst = 0.0
@@ -102,6 +114,33 @@ object FuelCalculations {
             maxConsumptionL100km = segmentConsumptions.maxOrNull() ?: 0.0
         )
 
-        return Pair(uiItems, stats)
+        val sortedUiItems = when (sortOption) {
+            FuelSortOption.DATE_DESC -> uiItems.sortedWith(
+                compareByDescending<FuelRecordUiItem> { it.record.date }
+                    .thenByDescending { it.record.odometer }
+            )
+            FuelSortOption.DATE_ASC -> uiItems.sortedWith(
+                compareBy<FuelRecordUiItem> { it.record.date }
+                    .thenBy { it.record.odometer }
+            )
+            FuelSortOption.PRICE_ASC -> uiItems.sortedWith(
+                compareBy<FuelRecordUiItem> { it.record.totalPrice }
+                    .thenByDescending { it.record.date }
+            )
+            FuelSortOption.PRICE_DESC -> uiItems.sortedWith(
+                compareByDescending<FuelRecordUiItem> { it.record.totalPrice }
+                    .thenByDescending { it.record.date }
+            )
+            FuelSortOption.QUANTITY_ASC -> uiItems.sortedWith(
+                compareBy<FuelRecordUiItem> { it.record.litres }
+                    .thenByDescending { it.record.date }
+            )
+            FuelSortOption.QUANTITY_DESC -> uiItems.sortedWith(
+                compareByDescending<FuelRecordUiItem> { it.record.litres }
+                    .thenByDescending { it.record.date }
+            )
+        }
+
+        return Pair(sortedUiItems, stats)
     }
 }

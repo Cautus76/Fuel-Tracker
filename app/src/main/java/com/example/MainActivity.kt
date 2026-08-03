@@ -23,8 +23,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            TankovaniTheme {
-                val uiState by fuelViewModel.uiState.collectAsStateWithLifecycle()
+            val uiState by fuelViewModel.uiState.collectAsStateWithLifecycle()
+            TankovaniTheme(palette = uiState.selectedThemePalette) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

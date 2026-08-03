@@ -18,6 +18,9 @@ interface FuelRecordDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecord(record: FuelRecord): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(records: List<FuelRecord>)
+
     @Update
     suspend fun updateRecord(record: FuelRecord)
 

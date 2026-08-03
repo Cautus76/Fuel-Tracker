@@ -69,22 +69,18 @@ class OdometerValidatorTest {
     }
 
     @Test
-    fun `rejecting a later value equal to or lower than the previous odometer reading`() {
-        // Equal to previous odometer (0 km when previous is 0 km)
+    fun `non-negative values are valid for validator to support retroactive entries`() {
+        // Equal to or lower than previous odometer is valid (handled via UI warning dialog)
         val resZeroEqual = OdometerValidator.validate(0.0, previousOdometer = 0.0)
-        assertTrue(resZeroEqual is OdometerValidator.ValidationResult.Invalid.ZeroNotAllowedWithPreviousRecords)
+        assertTrue(resZeroEqual is OdometerValidator.ValidationResult.Valid)
 
-        // Equal to previous odometer (500 km when previous is 500 km)
         val resEqual = OdometerValidator.validate(500.0, previousOdometer = 500.0)
-        assertTrue(resEqual is OdometerValidator.ValidationResult.Invalid.MustBeGreaterThanPrevious)
-        assertEquals(500.0, (resEqual as OdometerValidator.ValidationResult.Invalid.MustBeGreaterThanPrevious).previousOdometer, 0.001)
+        assertTrue(resEqual is OdometerValidator.ValidationResult.Valid)
 
-        // Lower than previous odometer (400 km when previous is 500 km)
         val resLower = OdometerValidator.validate(400.0, previousOdometer = 500.0)
-        assertTrue(resLower is OdometerValidator.ValidationResult.Invalid.MustBeGreaterThanPrevious)
-        assertEquals(500.0, (resLower as OdometerValidator.ValidationResult.Invalid.MustBeGreaterThanPrevious).previousOdometer, 0.001)
+        assertTrue(resLower is OdometerValidator.ValidationResult.Valid)
 
-        // Negative value when previous odometer exists
+        // Negative value is rejected
         val resNegative = OdometerValidator.validate(-5.0, previousOdometer = 500.0)
         assertTrue(resNegative is OdometerValidator.ValidationResult.Invalid.NegativeValue)
     }

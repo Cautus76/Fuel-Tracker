@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -32,15 +34,25 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sell
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.ui.platform.LocalContext
+import com.example.ui.model.FuelSortOption
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -70,15 +82,19 @@ import androidx.compose.ui.unit.dp
 
 import com.example.data.model.FuelRecord
 import com.example.ui.components.AddEditFuelDialog
+import com.example.ui.components.CarProfileDialog
 import com.example.ui.components.EmptyStateCard
+import com.example.ui.components.ExportOptionsDialog
 import com.example.ui.components.FuelConsumptionChart
 import com.example.ui.components.FuelRecordCard
 import com.example.ui.components.StatsOverviewCard
+import com.example.ui.components.ThemePickerDialog
 import com.example.ui.viewmodel.FuelUiState
 import com.example.ui.viewmodel.FuelViewModel
 import com.example.util.ClearAllProtectionValidator
 
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Palette
 import com.example.ui.model.AppLanguage
 import com.example.util.AppStrings
 
@@ -89,6 +105,7 @@ fun MainScreen(
     uiState: FuelUiState,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val lang = uiState.currentLanguage
     val snackbarHostState = remember { SnackbarHostState() }
     var showMenu by remember { mutableStateOf(false) }
@@ -96,6 +113,18 @@ fun MainScreen(
     var isSearchActive by remember { mutableStateOf(false) }
     var recordToDelete by remember { mutableStateOf<FuelRecord?>(null) }
     var showClearAllConfirm by remember { mutableStateOf(false) }
+
+    val importCsvLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { viewModel.importDataFromUri(context, it) }
+    }
+
+    val createCsvDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        uri?.let { viewModel.saveExportToUri(context, it) }
+    }
 
     // Handle snackbar messages
     LaunchedEffect(uiState.snackbarMessage) {
@@ -129,13 +158,15 @@ fun MainScreen(
                             }
                         }
                         Column {
+                            val displayTitle = if (uiState.carProfile.carName.isNotBlank()) uiState.carProfile.carName else AppStrings.appName(lang)
+                            val displaySubtitle = if (uiState.carProfile.spz.isNotBlank()) "SPZ: ${uiState.carProfile.spz}" else AppStrings.consumptionChartTitle(lang)
                             Text(
-                                text = AppStrings.appName(lang),
+                                text = displayTitle,
                                 fontWeight = FontWeight.ExtraBold,
                                 style = MaterialTheme.typography.titleLarge
                             )
                             Text(
-                                text = AppStrings.consumptionChartTitle(lang),
+                                text = displaySubtitle,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -215,19 +246,85 @@ fun MainScreen(
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text(AppStrings.loadSampleData(lang)) },
+                                text = { Text(AppStrings.editVehicleProfile(lang)) },
                                 leadingIcon = {
                                     Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
+                                        imageVector = Icons.Default.DirectionsCar,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 },
                                 onClick = {
                                     showMenu = false
-                                    viewModel.loadSampleData()
+                                    viewModel.openCarProfileDialog()
                                 },
-                                modifier = Modifier.testTag("menu_load_sample")
+                                modifier = Modifier.testTag("menu_edit_car_profile")
+                            )
+
+                            DropdownMenuItem(
+                                text = { Text(AppStrings.changeTheme(lang)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Palette,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    viewModel.openThemeDialog()
+                                },
+                                modifier = Modifier.testTag("menu_change_theme")
+                            )
+
+                            if (uiState.rawRecords.isEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text(AppStrings.loadSampleData(lang)) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        viewModel.loadSampleData()
+                                    },
+                                    modifier = Modifier.testTag("menu_load_sample")
+                                )
+                            }
+
+                            DropdownMenuItem(
+                                text = { Text(AppStrings.exportDataCsv(lang)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Share,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    viewModel.openExportOptionsDialog()
+                                },
+                                modifier = Modifier.testTag("menu_export_csv")
+                            )
+
+                            DropdownMenuItem(
+                                text = { Text(AppStrings.importDataCsv(lang)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.FileDownload,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    importCsvLauncher.launch("*/*")
+                                },
+                                modifier = Modifier.testTag("menu_import_csv")
                             )
 
                             if (uiState.rawRecords.isNotEmpty()) {
@@ -310,12 +407,8 @@ fun MainScreen(
 
             // Filter Chips for Fuel Type
             if (uiState.rawRecords.isNotEmpty()) {
-                val fuelTypes = listOf(
-                    null to AppStrings.allFuelTypes(lang),
-                    "Benzín" to "Benzín",
-                    "Nafta" to "Nafta",
-                    "LPG" to "LPG"
-                )
+                val fuelTypes = listOf(null to AppStrings.allFuelTypes(lang)) +
+                        uiState.carProfile.allowedFuelTypes.map { it to it }
                 FlowRow(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -358,31 +451,45 @@ fun MainScreen(
                     }
                 }
 
-                // Item 3: List Section Header
+                // Item 3: List Section Header & Sort Dropdown directly above records
                 item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            text = AppStrings.recordsHistory(lang),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "${uiState.items.size} ${AppStrings.totalRecords(lang)}",
-                                style = MaterialTheme.typography.labelSmall,
+                                text = AppStrings.recordsHistory(lang),
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Text(
+                                    text = "${uiState.items.size} ${AppStrings.totalRecords(lang)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        if (uiState.rawRecords.isNotEmpty()) {
+                            SortDropdownMenu(
+                                selectedOption = uiState.selectedSortOption,
+                                onOptionSelected = { viewModel.setSortOption(it) },
+                                lang = lang,
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
@@ -419,10 +526,53 @@ fun MainScreen(
         AddEditFuelDialog(
             editingRecord = uiState.editingRecord,
             previousOdometer = uiState.previousOdometer,
+            rawRecords = uiState.rawRecords,
+            allowedFuelTypes = uiState.carProfile.allowedFuelTypes,
             onDismiss = { viewModel.closeDialog() },
             onSave = { date, odo, lit, pri, fuelType, station ->
                 viewModel.saveRecord(date, odo, lit, pri, fuelType, station)
             },
+            lang = lang
+        )
+    }
+
+    // Export Options Dialog
+    if (uiState.isExportOptionsDialogOpen) {
+        ExportOptionsDialog(
+            recordCount = uiState.rawRecords.size,
+            lang = lang,
+            onDismiss = { viewModel.closeExportOptionsDialog() },
+            onShareApp = { viewModel.exportAndShare(context) },
+            onSaveToDevice = {
+                createCsvDocumentLauncher.launch(com.example.util.CsvExporter.getExportFileName())
+            }
+        )
+    }
+
+    // Theme Picker Dialog
+    if (uiState.isThemeDialogOpen) {
+        ThemePickerDialog(
+            selectedPalette = uiState.selectedThemePalette,
+            lang = lang,
+            onPaletteSelect = { viewModel.setThemePalette(it) },
+            onDismiss = { viewModel.closeThemeDialog() }
+        )
+    }
+
+    // First launch onboarding / Car Profile dialog
+    if (uiState.isOnboardingDialogOpen || uiState.isCarProfileDialogOpen) {
+        CarProfileDialog(
+            currentProfile = uiState.carProfile,
+            isFirstLaunch = uiState.isOnboardingDialogOpen,
+            onSave = { carName, spz, selectedFuelTypes ->
+                viewModel.saveCarProfile(carName, spz, selectedFuelTypes)
+            },
+            onDismiss = {
+                viewModel.closeCarProfileDialog()
+            },
+            onLoadSampleData = if (uiState.rawRecords.isEmpty()) {
+                { viewModel.loadSampleData() }
+            } else null,
             lang = lang
         )
     }
@@ -536,3 +686,58 @@ fun MainScreen(
         )
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SortDropdownMenu(
+    selectedOption: FuelSortOption,
+    onOptionSelected: (FuelSortOption) -> Unit,
+    lang: AppLanguage,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = AppStrings.sortOptionLabel(selectedOption, lang),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("${AppStrings.sortByLabel(lang)}:") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth()
+                .testTag("sort_dropdown_field"),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.testTag("sort_dropdown_menu")
+        ) {
+            FuelSortOption.values().forEach { option ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = AppStrings.sortOptionLabel(option, lang),
+                            fontWeight = if (option == selectedOption) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    onClick = {
+                        onOptionSelected(option)
+                        expanded = false
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                    modifier = Modifier.testTag("sort_option_${option.name.lowercase()}")
+                )
+            }
+        }
+    }
+}
+

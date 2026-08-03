@@ -58,11 +58,22 @@ import java.util.Calendar
 import com.example.ui.model.AppLanguage
 import com.example.util.AppStrings
 
+private data class PendingRecordData(
+    val date: String,
+    val odometer: Double,
+    val litres: Double,
+    val totalPrice: Double,
+    val fuelType: String,
+    val stationName: String
+)
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddEditFuelDialog(
     editingRecord: FuelRecord?,
     previousOdometer: Double?,
+    rawRecords: List<FuelRecord> = emptyList(),
+    allowedFuelTypes: List<String> = listOf("Benzín", "Nafta", "LPG", "CNG", "Elektro"),
     onDismiss: () -> Unit,
     onSave: (date: String, odometer: Double, litres: Double, totalPrice: Double, fuelType: String, stationName: String) -> Unit,
     lang: AppLanguage = AppLanguage.CZ,
@@ -73,6 +84,17 @@ fun AddEditFuelDialog(
     }
 
     var isSaving by remember { mutableStateOf(false) }
+    var showRetroactiveWarning by remember { mutableStateOf(false) }
+    var pendingRecordData by remember { mutableStateOf<PendingRecordData?>(null) }
+
+    val fuelTypes = remember(allowedFuelTypes, editingRecord) {
+        val base = if (allowedFuelTypes.isNotEmpty()) allowedFuelTypes else listOf("Benzín", "Nafta", "LPG", "CNG", "Elektro")
+        if (editingRecord != null && !base.contains(editingRecord.fuelType)) {
+            base + editingRecord.fuelType
+        } else {
+            base
+        }
+    }
 
     var odometerText by remember {
         mutableStateOf(
@@ -93,7 +115,7 @@ fun AddEditFuelDialog(
     }
 
     var selectedFuelType by remember {
-        mutableStateOf(editingRecord?.fuelType ?: "Benzín")
+        mutableStateOf(editingRecord?.fuelType ?: fuelTypes.firstOrNull() ?: "Benzín")
     }
 
     var stationName by remember {
@@ -118,7 +140,6 @@ fun AddEditFuelDialog(
         }
     }
 
-    val fuelTypes = listOf("Benzín", "Nafta", "LPG", "CNG", "Elektro")
     val popularStations = listOf("ORLEN", "Shell", "MOL", "OMV", "EuroOil")
 
     if (showDatePicker) {
@@ -430,8 +451,29 @@ fun AddEditFuelDialog(
                     }
 
                     if (isValid && odo != null && lit != null && pri != null) {
-                        isSaving = true
-                        onSave(dateIsoStr, odo, lit, pri, selectedFuelType, stationName.trim())
+                        val otherRecords = rawRecords.filter { it.id != editingRecord?.id }
+                        val latestDate = otherRecords.maxOfOrNull { it.date }
+                        val maxOdometer = otherRecords.maxOfOrNull { it.odometer }
+
+                        val isRetroactive = otherRecords.isNotEmpty() && (
+                            (latestDate != null && dateIsoStr < latestDate) ||
+                            (maxOdometer != null && odo < maxOdometer)
+                        )
+
+                        if (isRetroactive) {
+                            pendingRecordData = PendingRecordData(
+                                date = dateIsoStr,
+                                odometer = odo,
+                                litres = lit,
+                                totalPrice = pri,
+                                fuelType = selectedFuelType,
+                                stationName = stationName.trim()
+                            )
+                            showRetroactiveWarning = true
+                        } else {
+                            isSaving = true
+                            onSave(dateIsoStr, odo, lit, pri, selectedFuelType, stationName.trim())
+                        }
                     }
                 },
                 enabled = !isSaving,
@@ -450,4 +492,41 @@ fun AddEditFuelDialog(
             }
         }
     )
+
+    if (showRetroactiveWarning && pendingRecordData != null) {
+        val pending = pendingRecordData!!
+        AlertDialog(
+            onDismissRequest = { showRetroactiveWarning = false },
+            title = { Text(AppStrings.retroactiveWarningTitle(lang)) },
+            text = { Text(AppStrings.retroactiveWarningMsg(lang)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRetroactiveWarning = false
+                        isSaving = true
+                        onSave(
+                            pending.date,
+                            pending.odometer,
+                            pending.litres,
+                            pending.totalPrice,
+                            pending.fuelType,
+                            pending.stationName
+                        )
+                    },
+                    modifier = Modifier.testTag("retroactive_confirm_button")
+                ) {
+                    Text(AppStrings.retroactiveConfirm(lang))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showRetroactiveWarning = false },
+                    modifier = Modifier.testTag("retroactive_cancel_button")
+                ) {
+                    Text(AppStrings.cancel(lang))
+                }
+            },
+            modifier = Modifier.testTag("retroactive_warning_dialog")
+        )
+    }
 }

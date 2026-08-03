@@ -49,4 +49,64 @@ class FuelCalculationsTest {
         assertEquals(0.0, stats.avgCostPerKmKc, 0.001)
         assertEquals(0.0, stats.avgConsumptionL100km, 0.001)
     }
+
+    @Test
+    fun `processRecords sorts UI items automatically by date descending`() {
+        val record1 = FuelRecord(id = 1, date = "2026-08-01", odometer = 10000.0, litres = 40.0, totalPrice = 1600.0)
+        val record2 = FuelRecord(id = 2, date = "2026-08-10", odometer = 11000.0, litres = 35.0, totalPrice = 1400.0)
+        val record3 = FuelRecord(id = 3, date = "2026-08-05", odometer = 10500.0, litres = 50.0, totalPrice = 2000.0)
+
+        val (items, _) = FuelCalculations.processRecords(listOf(record1, record2, record3), FuelSortOption.DATE_DESC)
+
+        assertEquals("2026-08-10", items[0].record.date)
+        assertEquals("2026-08-05", items[1].record.date)
+        assertEquals("2026-08-01", items[2].record.date)
+    }
+
+    @Test
+    fun `processRecords sorts UI items by date ascending`() {
+        val record1 = FuelRecord(id = 1, date = "2026-08-01", odometer = 10000.0, litres = 40.0, totalPrice = 1600.0)
+        val record2 = FuelRecord(id = 2, date = "2026-08-10", odometer = 11000.0, litres = 35.0, totalPrice = 1400.0)
+        val record3 = FuelRecord(id = 3, date = "2026-08-05", odometer = 10500.0, litres = 50.0, totalPrice = 2000.0)
+
+        val (items, _) = FuelCalculations.processRecords(listOf(record1, record2, record3), FuelSortOption.DATE_ASC)
+
+        assertEquals("2026-08-01", items[0].record.date)
+        assertEquals("2026-08-05", items[1].record.date)
+        assertEquals("2026-08-10", items[2].record.date)
+    }
+
+    @Test
+    fun `processRecords sorts UI items by price ascending and descending`() {
+        val record1 = FuelRecord(id = 1, date = "2026-08-01", odometer = 10000.0, litres = 40.0, totalPrice = 1600.0)
+        val record2 = FuelRecord(id = 2, date = "2026-08-10", odometer = 11000.0, litres = 35.0, totalPrice = 1400.0)
+        val record3 = FuelRecord(id = 3, date = "2026-08-05", odometer = 10500.0, litres = 50.0, totalPrice = 2000.0)
+
+        val (itemsAsc, _) = FuelCalculations.processRecords(listOf(record1, record2, record3), FuelSortOption.PRICE_ASC)
+        assertEquals(1400.0, itemsAsc[0].record.totalPrice, 0.001)
+        assertEquals(1600.0, itemsAsc[1].record.totalPrice, 0.001)
+        assertEquals(2000.0, itemsAsc[2].record.totalPrice, 0.001)
+
+        val (itemsDesc, _) = FuelCalculations.processRecords(listOf(record1, record2, record3), FuelSortOption.PRICE_DESC)
+        assertEquals(2000.0, itemsDesc[0].record.totalPrice, 0.001)
+        assertEquals(1600.0, itemsDesc[1].record.totalPrice, 0.001)
+        assertEquals(1400.0, itemsDesc[2].record.totalPrice, 0.001)
+    }
+
+    @Test
+    fun `processRecords sorts UI items by quantity ascending and descending`() {
+        val record1 = FuelRecord(id = 1, date = "2026-08-01", odometer = 10000.0, litres = 40.0, totalPrice = 1600.0)
+        val record2 = FuelRecord(id = 2, date = "2026-08-10", odometer = 11000.0, litres = 35.0, totalPrice = 1400.0)
+        val record3 = FuelRecord(id = 3, date = "2026-08-05", odometer = 10500.0, litres = 50.0, totalPrice = 2000.0)
+
+        val (itemsAsc, _) = FuelCalculations.processRecords(listOf(record1, record2, record3), FuelSortOption.QUANTITY_ASC)
+        assertEquals(35.0, itemsAsc[0].record.litres, 0.001)
+        assertEquals(40.0, itemsAsc[1].record.litres, 0.001)
+        assertEquals(50.0, itemsAsc[2].record.litres, 0.001)
+
+        val (itemsDesc, _) = FuelCalculations.processRecords(listOf(record1, record2, record3), FuelSortOption.QUANTITY_DESC)
+        assertEquals(50.0, itemsDesc[0].record.litres, 0.001)
+        assertEquals(40.0, itemsDesc[1].record.litres, 0.001)
+        assertEquals(35.0, itemsDesc[2].record.litres, 0.001)
+    }
 }

@@ -33,29 +33,17 @@ object OdometerValidator {
     }
 
     /**
-     * Validates an odometer value against previous odometer reading.
+     * Validates an odometer value.
      * @param odometer parsed odometer value, or null if input was empty/not a number
-     * @param previousOdometer previous record's odometer reading, or null if no previous record exists
+     * @param previousOdometer optional previous record's odometer reading
      */
-    fun validate(odometer: Double?, previousOdometer: Double?): ValidationResult {
+    fun validate(odometer: Double?, previousOdometer: Double? = null): ValidationResult {
         if (odometer == null) {
             return ValidationResult.Invalid.EmptyOrInvalidNumber
         }
         if (odometer < 0.0) {
             return ValidationResult.Invalid.NegativeValue
         }
-        if (previousOdometer == null) {
-            // First record: 0.0 and positive values are valid
-            return ValidationResult.Valid
-        } else {
-            // Subsequent record: 0 km not allowed, and value must be > previousOdometer
-            if (odometer <= previousOdometer) {
-                if (odometer == 0.0) {
-                    return ValidationResult.Invalid.ZeroNotAllowedWithPreviousRecords
-                }
-                return ValidationResult.Invalid.MustBeGreaterThanPrevious(previousOdometer)
-            }
-            return ValidationResult.Valid
-        }
+        return ValidationResult.Valid
     }
 }
